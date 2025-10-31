@@ -7,8 +7,14 @@ import MovieGrid from './components/MovieGrid';
 import MovieModal from './components/MovieModal';
 import AiAssistantModal from './components/AiAssistantModal';
 import { ChevronDownIcon } from './components/icons/ChevronDownIcon';
+import Pagination from './components/Pagination';
+import Footer from './components/Footer';
+import LegalModal from './components/LegalModal';
 
 type FilterType = 'All' | 'Movie' | 'TV Series' | 'TV Program' | 'Watchlist';
+type LegalModalType = 'privacy' | 'disclaimer' | 'dmca' | null;
+
+const ITEMS_PER_PAGE = 10;
 
 const App: React.FC = () => {
   const [contentItems] = useState<ContentItem[]>(CONTENT_ITEMS);
@@ -21,6 +27,9 @@ const App: React.FC = () => {
   const [userRatings, setUserRatings] = useState<{ [key: number]: number }>({});
   const [watchProgress, setWatchProgress] = useState<{ [key: number]: number }>({});
   const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeLegalModal, setActiveLegalModal] = useState<LegalModalType>(null);
+
   const contentGridRef = useRef<HTMLHeadingElement>(null);
   const genreDropdownRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
@@ -59,7 +68,8 @@ const App: React.FC = () => {
       return;
     }
     
-    // Scroll to content grid only when filters change, not on other state updates
+    setCurrentPage(1);
+
     const timeoutId = setTimeout(() => {
         contentGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -134,8 +144,12 @@ const App: React.FC = () => {
       [itemId]: progress,
     }));
   };
+  
+  const handleOpenLegalModal = (type: LegalModalType) => {
+    setActiveLegalModal(type);
+  };
 
-  const filteredContent = contentItems.filter(item => {
+  const filteredContent = useMemo(() => contentItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGenre = activeGenre === 'All' || item.genre.split(', ').includes(activeGenre);
 
@@ -155,7 +169,7 @@ const App: React.FC = () => {
     const matchesFilterType = !typeToMatch || item.type === typeToMatch;
 
     return matchesFilterType && matchesSearch && matchesGenre;
-  });
+  }), [contentItems, searchQuery, activeGenre, activeFilter, watchlist]);
 
   const continueWatchingContent = useMemo(() => {
     return contentItems
@@ -163,6 +177,19 @@ const App: React.FC = () => {
       .sort((a, b) => (watchProgress[b.id] || 0) - (watchProgress[a.id] || 0)); // Or sort by last watched date
   }, [contentItems, watchProgress]);
 
+  const totalPages = Math.ceil(filteredContent.length / ITEMS_PER_PAGE);
+
+  const paginatedContent = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredContent.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredContent, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      contentGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const filterButtons: {label: string, value: FilterType}[] = [
     { label: 'Home', value: 'All' },
@@ -172,86 +199,94 @@ const App: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans">
+    <div className="flex flex-col min-h-screen bg-gray-900 text-white font-sans">
       <Header 
         onOpenAiAssistant={openAiModal} 
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
-      <Hero
-        movie={heroContentItem}
-        onSelectMovie={handleSelectContentItem}
-        onToggleWatchlist={handleToggleWatchlist}
-        isInWatchlist={watchlist.includes(heroContentItem.id)}
-      />
-      <main className="py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6 border-b border-gray-700/60 pb-4 flex-wrap gap-4">
-            <div className="flex items-center gap-4 sm:gap-6">
-              {filterButtons.map(({ label, value }) => (
+      <div className="flex-grow">
+        <Hero
+          movie={heroContentItem}
+          onSelectMovie={handleSelectContentItem}
+          onToggleWatchlist={handleToggleWatchlist}
+          isInWatchlist={watchlist.includes(heroContentItem.id)}
+        />
+        <main className="py-8">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-6 border-b border-gray-700/60 pb-4 flex-wrap gap-4">
+              <div className="flex items-center gap-4 sm:gap-6">
+                {filterButtons.map(({ label, value }) => (
+                  <button
+                    key={value}
+                    onClick={() => setActiveFilter(value)}
+                    className={`text-base sm:text-lg font-semibold transition-colors duration-300 focus:outline-none ${
+                      activeFilter === value
+                        ? 'text-red-500'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                    aria-pressed={activeFilter === value}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="relative" ref={genreDropdownRef}>
                 <button
-                  key={value}
-                  onClick={() => setActiveFilter(value)}
-                  className={`text-base sm:text-lg font-semibold transition-colors duration-300 focus:outline-none ${
-                    activeFilter === value
-                      ? 'text-red-500'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                  aria-pressed={activeFilter === value}
+                  onClick={() => setIsGenreDropdownOpen(prev => !prev)}
+                  className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-red-500"
                 >
-                  {label}
+                  <span>{activeGenre}</span>
+                  <ChevronDownIcon className={`w-5 h-5 transition-transform duration-200 ${isGenreDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-              ))}
+                {isGenreDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-md shadow-lg z-20 overflow-hidden ring-1 ring-black/5 animate-fade-in">
+                    <div className="py-1 max-h-60 overflow-y-auto">
+                      {uniqueGenres.map((genre) => (
+                        <button
+                          key={genre}
+                          onClick={() => { setActiveGenre(genre); setIsGenreDropdownOpen(false); }}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                        >
+                          {genre}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             
-            <div className="relative" ref={genreDropdownRef}>
-              <button
-                onClick={() => setIsGenreDropdownOpen(prev => !prev)}
-                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-red-500"
-              >
-                <span>{activeGenre}</span>
-                <ChevronDownIcon className={`w-5 h-5 transition-transform duration-200 ${isGenreDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {isGenreDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-md shadow-lg z-20 overflow-hidden ring-1 ring-black/5 animate-fade-in">
-                  <div className="py-1 max-h-60 overflow-y-auto">
-                    {uniqueGenres.map((genre) => (
-                      <button
-                        key={genre}
-                        onClick={() => { setActiveGenre(genre); setIsGenreDropdownOpen(false); }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
-                      >
-                        {genre}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {continueWatchingContent.length > 0 && (
-            <div className="mb-12">
-              <h1 className="text-3xl font-bold mb-6 text-gray-100">Continue Watching</h1>
-              <MovieGrid 
-                movies={continueWatchingContent} 
-                watchlist={watchlist}
-                onToggleWatchlist={handleToggleWatchlist}
-                watchProgress={watchProgress}
-              />
-            </div>
-          )}
+            {continueWatchingContent.length > 0 && (
+              <div className="mb-12">
+                <h1 className="text-3xl font-bold mb-6 text-gray-100">Continue Watching</h1>
+                <MovieGrid 
+                  movies={continueWatchingContent} 
+                  watchlist={watchlist}
+                  onToggleWatchlist={handleToggleWatchlist}
+                  watchProgress={watchProgress}
+                />
+              </div>
+            )}
 
-          <h1 ref={contentGridRef} className="text-3xl font-bold mb-6 text-gray-100">Trending</h1>
-          
-          <MovieGrid 
-            movies={filteredContent} 
-            watchlist={watchlist}
-            onToggleWatchlist={handleToggleWatchlist}
-            watchProgress={watchProgress}
-          />
-        </div>
-      </main>
+            <h1 ref={contentGridRef} className="text-3xl font-bold mb-6 text-gray-100">Trending</h1>
+            
+            <MovieGrid 
+              movies={paginatedContent} 
+              watchlist={watchlist}
+              onToggleWatchlist={handleToggleWatchlist}
+              watchProgress={watchProgress}
+            />
+            
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        </main>
+      </div>
 
       {selectedContentItem && (
         <MovieModal 
@@ -271,6 +306,12 @@ const App: React.FC = () => {
           onSelectMovie={handleAiSelection}
         />
       )}
+      
+      {activeLegalModal && (
+        <LegalModal type={activeLegalModal} onClose={() => setActiveLegalModal(null)} />
+      )}
+
+      <Footer onOpenLegalModal={handleOpenLegalModal} />
     </div>
   );
 };

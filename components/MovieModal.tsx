@@ -7,6 +7,11 @@ import { SparklesIcon } from './icons/SparklesIcon';
 import { StarIcon } from './icons/StarIcon';
 import { ShareIcon } from './icons/ShareIcon';
 import StarRating from './StarRating';
+import { PauseIcon } from './icons/PauseIcon';
+import { VolumeIcon } from './icons/VolumeIcon';
+import { VolumeOffIcon } from './icons/VolumeOffIcon';
+import { FullscreenIcon } from './icons/FullscreenIcon';
+
 
 interface MovieModalProps {
   movie: ContentItem | null;
@@ -23,7 +28,18 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, userRating, onS
   const [isClosing, setIsClosing] = useState(false);
   const [isTrailerPlaying, setIsTrailerPlaying] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
+  
+  // Custom Player State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [controlsVisible, setControlsVisible] = useState(true);
+
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const controlsTimeoutRef = useRef<number | null>(null);
 
   const handleGenerateSummary = useCallback(async () => {
     if (!movie) return;
@@ -45,34 +61,123 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, userRating, onS
     setIsClosing(false);
     setAiSummary('');
     setIsLoadingSummary(false);
-    setIsTrailerPlaying(false); // Reset trailer state on movie change
+    setIsTrailerPlaying(false);
+    // Reset player state on movie change
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setControlsVisible(true);
   }, [movie]);
-  
-  // Effect for tracking video progress
-  useEffect(() => {
-    const videoElement = videoRef.current;
-    if (!videoElement || !movie) return;
 
-    const handleTimeUpdate = () => {
-      if (videoElement.duration) {
-        const progress = (videoElement.currentTime / videoElement.duration) * 100;
+  // Helper to format time from seconds to MM:SS
+  const formatTime = (timeInSeconds: number) => {
+    if (isNaN(timeInSeconds)) return '00:00';
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  // --- Custom Player Handlers ---
+  const togglePlayPause = () => {
+    if (videoRef.current) {
+      videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = Number(e.target.value);
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (videoRef.current) {
+      const newVolume = Number(e.target.value);
+      videoRef.current.volume = newVolume;
+      videoRef.current.muted = newVolume === 0;
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+    }
+  };
+  
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+        playerContainerRef.current?.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+  };
+
+  // --- Video Element Event Listeners ---
+  const handlePlay = () => setIsPlaying(true);
+  const handlePause = () => setIsPlaying(false);
+  
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+      if (videoRef.current.duration && movie) {
+        const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
         onSetProgress(movie.id, progress);
       }
-    };
-    
-    const handleVideoEnd = () => {
-      onSetProgress(movie.id, 100);
-      setIsTrailerPlaying(false);
-    };
+    }
+  };
+  
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+    }
+  };
 
-    videoElement.addEventListener('timeupdate', handleTimeUpdate);
-    videoElement.addEventListener('ended', handleVideoEnd);
+  const handleVolumeChangeState = () => {
+    if (videoRef.current) {
+      setVolume(videoRef.current.volume);
+      setIsMuted(videoRef.current.muted);
+    }
+  };
+
+  const handleVideoEnd = () => {
+    if (movie) onSetProgress(movie.id, 100);
+    setIsPlaying(false);
+    setIsTrailerPlaying(false);
+  };
+  
+  // --- Controls Visibility Logic ---
+  const hideControls = () => setControlsVisible(false);
+
+  const showAndResetTimer = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    if (isPlaying) {
+      controlsTimeoutRef.current = window.setTimeout(hideControls, 3000);
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      setControlsVisible(true);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    } else {
+      controlsTimeoutRef.current = window.setTimeout(hideControls, 3000);
+    }
 
     return () => {
-      videoElement.removeEventListener('timeupdate', handleTimeUpdate);
-      videoElement.removeEventListener('ended', handleVideoEnd);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
     };
-  }, [isTrailerPlaying, movie, onSetProgress]);
+  }, [isPlaying]);
 
 
   if (!movie) return null;
@@ -170,15 +275,77 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, userRating, onS
             </div>
 
             <h3 className="text-xl font-semibold text-white mb-3">Official Trailer</h3>
-            <div className="relative aspect-video bg-black rounded-lg mb-6 overflow-hidden ring-1 ring-gray-700">
+            <div
+                ref={playerContainerRef}
+                className="relative aspect-video bg-black rounded-lg mb-6 overflow-hidden ring-1 ring-gray-700"
+                onMouseMove={showAndResetTimer}
+                onMouseLeave={() => { if(isPlaying) hideControls(); }}
+            >
               {isTrailerPlaying ? (
-                <video
-                  ref={videoRef}
-                  src="https://t.co/SCaSzYe7Cs"
-                  className="w-full h-full"
-                  controls
-                  autoPlay
-                />
+                <>
+                  <video
+                    ref={videoRef}
+                    src="https://t.co/SCaSzYe7Cs"
+                    className="w-full h-full"
+                    autoPlay
+                    onClick={togglePlayPause}
+                    onPlay={handlePlay}
+                    onPause={handlePause}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onVolumeChange={handleVolumeChangeState}
+                    onEnded={handleVideoEnd}
+                  />
+                  {/* Always-Visible Progress Bar */}
+                  <div className="absolute bottom-0 left-0 right-0 px-4 pt-4 pb-3 bg-gradient-to-t from-black/60 to-transparent pointer-events-none">
+                     <input
+                        type="range"
+                        min="0"
+                        max={duration}
+                        value={currentTime}
+                        onChange={handleSeek}
+                        className="w-full h-1.5 bg-gray-500/50 rounded-lg appearance-none cursor-pointer range-sm accent-red-500 pointer-events-auto"
+                        aria-label="Video progress"
+                      />
+                      <div className="flex justify-between items-center text-xs text-gray-300 font-mono mt-1">
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(duration)}</span>
+                      </div>
+                  </div>
+
+
+                  {/* Auto-Hiding Controls */}
+                  <div className={`absolute inset-0 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0'}`} onClick={e => e.currentTarget === e.target && togglePlayPause()}>
+                     <div className="absolute bottom-12 left-0 right-0 px-3 flex items-center justify-between">
+                        {/* Left Controls */}
+                        <div className="flex items-center gap-4">
+                          <button onClick={togglePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'} className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
+                            {isPlaying ? <PauseIcon className="w-7 h-7" /> : <PlayIcon className="w-7 h-7" />}
+                          </button>
+                          <div className="flex items-center gap-2 group">
+                            <button onClick={toggleMute} aria-label={isMuted ? 'Unmute' : 'Mute'} className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
+                              {isMuted || volume === 0 ? <VolumeOffIcon className="w-6 h-6" /> : <VolumeIcon className="w-6 h-6" />}
+                            </button>
+                            <input
+                              type="range"
+                              min="0" max="1" step="0.05"
+                              value={isMuted ? 0 : volume}
+                              onChange={handleVolumeChange}
+                              className="w-0 md:w-20 h-1 bg-gray-500/50 rounded-lg appearance-none cursor-pointer range-sm accent-red-500 transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:w-20"
+                              aria-label="Volume control"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Right Controls */}
+                        <div className="flex items-center gap-4">
+                          <button onClick={toggleFullscreen} aria-label="Toggle fullscreen" className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
+                            <FullscreenIcon className="w-6 h-6" />
+                          </button>
+                        </div>
+                      </div>
+                  </div>
+                </>
               ) : (
                 <>
                   <img src={movie.posterUrl} alt={`${movie.title} trailer placeholder`} className="w-full h-full object-cover opacity-20" />
