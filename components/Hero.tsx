@@ -2,6 +2,7 @@ import React from 'react';
 import { ContentItem } from '../types';
 import { PlayIcon } from './icons/PlayIcon';
 import { BookmarkIcon } from './icons/BookmarkIcon';
+import Tooltip from './Tooltip';
 
 interface HeroProps {
   movie: ContentItem;
@@ -31,6 +32,7 @@ const Hero: React.FC<HeroProps> = ({ movie, onSelectMovie, onToggleWatchlist, is
             </div>
             <p className="text-gray-200 mb-8 line-clamp-3 leading-relaxed">{movie.description}</p>
             <div className="flex flex-wrap items-center gap-4">
+              <Tooltip text="Watch trailer and see details" position="bottom">
                 <button 
                     onClick={() => onSelectMovie(movie)} 
                     className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-lg transition-transform duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -38,6 +40,8 @@ const Hero: React.FC<HeroProps> = ({ movie, onSelectMovie, onToggleWatchlist, is
                     <PlayIcon className="w-6 h-6" />
                     <span>View Details</span>
                 </button>
+              </Tooltip>
+              <Tooltip text={isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'} position="bottom">
                 <button 
                     onClick={() => onToggleWatchlist(movie.id)} 
                     className="flex items-center gap-2 bg-black/40 hover:bg-white/20 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -46,6 +50,7 @@ const Hero: React.FC<HeroProps> = ({ movie, onSelectMovie, onToggleWatchlist, is
                     <BookmarkIcon className="w-6 h-6" isFilled={isInWatchlist} />
                     <span>{isInWatchlist ? 'On Watchlist' : 'Add to Watchlist'}</span>
                 </button>
+              </Tooltip>
             </div>
         </div>
       </div>

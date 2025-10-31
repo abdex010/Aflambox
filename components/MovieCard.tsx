@@ -4,6 +4,7 @@ import { StarIcon } from './icons/StarIcon';
 import { BookmarkIcon } from './icons/BookmarkIcon';
 import { ShareIcon } from './icons/ShareIcon';
 import { CheckIcon } from './icons/CheckIcon';
+import Tooltip from './Tooltip';
 
 interface MovieCardProps {
   movie: ContentItem;
@@ -98,20 +99,24 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist, onToggleWat
           <p className="text-gray-400 text-sm mt-1">{movie.year}</p>
         </div>
         <div className="flex-shrink-0 flex items-center gap-2">
-           <button
-              onClick={handleShareClick}
-              aria-label="Share movie"
-              className="bg-gray-700/80 p-1.5 rounded-full text-white hover:text-red-500 focus:outline-none focus:ring-2 ring-offset-2 ring-offset-gray-800 focus:ring-red-500 transition-colors"
-            >
-              <ShareIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleWatchlistClick}
-              aria-label={isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
-              className="flex-shrink-0 bg-gray-700/80 p-1.5 rounded-full text-white hover:text-red-500 focus:outline-none focus:ring-2 ring-offset-2 ring-offset-gray-800 focus:ring-red-500 transition-colors"
-            >
-              <BookmarkIcon className="w-5 h-5" isFilled={isInWatchlist} />
-            </button>
+           <Tooltip text="Share">
+             <button
+                onClick={handleShareClick}
+                aria-label="Share movie"
+                className="bg-gray-700/80 p-1.5 rounded-full text-white hover:text-red-500 focus:outline-none focus:ring-2 ring-offset-2 ring-offset-gray-800 focus:ring-red-500 transition-colors"
+              >
+                <ShareIcon className="w-5 h-5" />
+              </button>
+           </Tooltip>
+           <Tooltip text={isInWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}>
+              <button
+                onClick={handleWatchlistClick}
+                aria-label={isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+                className="flex-shrink-0 bg-gray-700/80 p-1.5 rounded-full text-white hover:text-red-500 focus:outline-none focus:ring-2 ring-offset-2 ring-offset-gray-800 focus:ring-red-500 transition-colors"
+              >
+                <BookmarkIcon className="w-5 h-5" isFilled={isInWatchlist} />
+              </button>
+            </Tooltip>
         </div>
       </div>
     </div>

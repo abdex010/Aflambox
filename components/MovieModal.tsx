@@ -11,6 +11,7 @@ import { PauseIcon } from './icons/PauseIcon';
 import { VolumeIcon } from './icons/VolumeIcon';
 import { VolumeOffIcon } from './icons/VolumeOffIcon';
 import { FullscreenIcon } from './icons/FullscreenIcon';
+import Tooltip from './Tooltip';
 
 
 interface MovieModalProps {
@@ -258,6 +259,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, userRating, onS
                     />
                 </div>
                 <div className="relative">
+                  <Tooltip text="Share this movie">
                     <button 
                         onClick={handleShare}
                         className="w-full h-full flex items-center justify-center gap-2 bg-gray-900/50 hover:bg-gray-700/50 text-gray-300 font-semibold py-3 px-6 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500"
@@ -266,6 +268,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, userRating, onS
                         <ShareIcon className="w-5 h-5" />
                         <span>Share</span>
                     </button>
+                  </Tooltip>
                     {shareFeedback && (
                         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md whitespace-nowrap animate-fade-in">
                             {shareFeedback}
@@ -319,13 +322,17 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, userRating, onS
                      <div className="absolute bottom-12 left-0 right-0 px-3 flex items-center justify-between">
                         {/* Left Controls */}
                         <div className="flex items-center gap-4">
-                          <button onClick={togglePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'} className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
-                            {isPlaying ? <PauseIcon className="w-7 h-7" /> : <PlayIcon className="w-7 h-7" />}
-                          </button>
-                          <div className="flex items-center gap-2 group">
-                            <button onClick={toggleMute} aria-label={isMuted ? 'Unmute' : 'Mute'} className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
-                              {isMuted || volume === 0 ? <VolumeOffIcon className="w-6 h-6" /> : <VolumeIcon className="w-6 h-6" />}
+                          <Tooltip text={isPlaying ? 'Pause' : 'Play'} position="top">
+                            <button onClick={togglePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'} className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
+                              {isPlaying ? <PauseIcon className="w-7 h-7" /> : <PlayIcon className="w-7 h-7" />}
                             </button>
+                          </Tooltip>
+                          <div className="flex items-center gap-2 group">
+                            <Tooltip text={isMuted || volume === 0 ? 'Unmute' : 'Mute'} position="top">
+                              <button onClick={toggleMute} aria-label={isMuted ? 'Unmute' : 'Mute'} className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
+                                {isMuted || volume === 0 ? <VolumeOffIcon className="w-6 h-6" /> : <VolumeIcon className="w-6 h-6" />}
+                              </button>
+                            </Tooltip>
                             <input
                               type="range"
                               min="0" max="1" step="0.05"
@@ -339,9 +346,11 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, userRating, onS
 
                         {/* Right Controls */}
                         <div className="flex items-center gap-4">
-                          <button onClick={toggleFullscreen} aria-label="Toggle fullscreen" className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
-                            <FullscreenIcon className="w-6 h-6" />
-                          </button>
+                          <Tooltip text="Fullscreen" position="top">
+                            <button onClick={toggleFullscreen} aria-label="Toggle fullscreen" className="focus:outline-none focus:text-red-500 hover:text-red-400 transition-colors">
+                              <FullscreenIcon className="w-6 h-6" />
+                            </button>
+                          </Tooltip>
                         </div>
                       </div>
                   </div>
@@ -350,14 +359,15 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, userRating, onS
                 <>
                   <img src={movie.posterUrl} alt={`${movie.title} trailer placeholder`} className="w-full h-full object-cover opacity-20" />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <button
-                      onClick={() => setIsTrailerPlaying(true)}
-                      className="text-white/80 hover:text-white hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-full"
-                      aria-label="Play trailer"
-                    >
-                      <PlayIcon className="w-20 h-20" />
-                    </button>
-                    <p className="mt-2 text-sm font-semibold text-white/60">Play Trailer</p>
+                    <Tooltip text="Play Trailer">
+                      <button
+                        onClick={() => setIsTrailerPlaying(true)}
+                        className="text-white/80 hover:text-white hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-full"
+                        aria-label="Play trailer"
+                      >
+                        <PlayIcon className="w-20 h-20" />
+                      </button>
+                    </Tooltip>
                   </div>
                   {watchProgress > 0 && watchProgress < 100 && (
                     <div className="absolute bottom-0 left-0 w-full h-2 bg-gray-600/50">

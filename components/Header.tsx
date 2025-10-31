@@ -1,6 +1,7 @@
 import React from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { SearchIcon } from './icons/SearchIcon';
+import Tooltip from './Tooltip';
 
 interface HeaderProps {
   onOpenAiAssistant: () => void;
@@ -32,13 +33,15 @@ const Header: React.FC<HeaderProps> = ({ onOpenAiAssistant, searchQuery, onSearc
                 aria-label="Search content"
               />
             </div>
-            <button
-              onClick={onOpenAiAssistant}
-              className="flex-shrink-0 flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              <SparklesIcon className="w-5 h-5" />
-              <span className="hidden sm:inline">AI Assistant</span>
-            </button>
+            <Tooltip text="Ask for recommendations" position="bottom">
+              <button
+                onClick={onOpenAiAssistant}
+                className="flex-shrink-0 flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <SparklesIcon className="w-5 h-5" />
+                <span className="hidden sm:inline">AI Assistant</span>
+              </button>
+            </Tooltip>
           </div>
         </div>
       </div>
