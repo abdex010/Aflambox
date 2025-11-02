@@ -238,12 +238,19 @@ const App: React.FC = () => {
 };
     const typeToMatch = filterTypeMap[activeFilter];
     const matchesFilterType = !typeToMatch || item.type === typeToMatch;
+const filteredContent = useMemo(() => {
+  return contentItems.filter((item) => {
+    const matchesFilterType = /* your filter logic */;
+    const matchesSearch = /* your search logic */;
+    const matchesGenre = /* your genre logic */;
 
     return matchesFilterType && matchesSearch && matchesGenre;
-  [contentItems, searchQuery, activeGenre, activeFilter, watchlist]; {
+  });
+}, [contentItems, searchQuery, activeGenre, activeFilter, watchlist]);
 
-  const continueWatchingContent = useMemo(() => {
-    return contentItems
+const continueWatchingContent = useMemo(() => {
+  return contentItems;
+}, []);
       .filter(item => watchProgress[item.id] > 0 && watchProgress[item.id] < 100)
       .sort((a, b) => (watchProgress[b.id] || 0) - (watchProgress[a.id] || 0)); // Or sort by last watched date
   }, [contentItems, watchProgress]);
