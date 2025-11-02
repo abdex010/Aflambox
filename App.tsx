@@ -235,12 +235,12 @@ const App: React.FC = () => {
       'TV Program': 'TV Program',
       'Watchlist': null, // Handled separately
     };
-
+};
     const typeToMatch = filterTypeMap[activeFilter];
     const matchesFilterType = !typeToMatch || item.type === typeToMatch;
 
     return matchesFilterType && matchesSearch && matchesGenre;
-  }, [contentItems, searchQuery, activeGenre, activeFilter, watchlist]);
+  [contentItems, searchQuery, activeGenre, activeFilter, watchlist]; {
 
   const continueWatchingContent = useMemo(() => {
     return contentItems
