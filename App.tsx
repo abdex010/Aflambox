@@ -10,6 +10,7 @@ import { ChevronDownIcon } from './components/icons/ChevronDownIcon';
 import Pagination from './components/Pagination';
 import Footer from './components/Footer';
 import LegalModal from './components/LegalModal';
+import SettingsModal from './components/SettingsModal'; // Import new component
 
 type FilterType = 'All' | 'Movie' | 'TV Series' | 'TV Program' | 'Watchlist';
 type LegalModalType = 'privacy' | 'disclaimer' | 'dmca' | null;
@@ -17,9 +18,10 @@ type LegalModalType = 'privacy' | 'disclaimer' | 'dmca' | null;
 const ITEMS_PER_PAGE = 10;
 
 const App: React.FC = () => {
-  const [contentItems] = useState<ContentItem[]>(CONTENT_ITEMS);
+  const [contentItems, setContentItems] = useState<ContentItem[]>(CONTENT_ITEMS); // Make stateful
   const [selectedContentItem, setSelectedContentItem] = useState<ContentItem | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // New state
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [activeGenre, setActiveGenre] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,7 +36,8 @@ const App: React.FC = () => {
   const genreDropdownRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
   
-  const heroContentItem = useMemo(() => contentItems[0], [contentItems]);
+  // Memoize hero content, now dependent on stateful contentItems
+  const heroContentItem = useMemo(() => contentItems.length > 0 ? contentItems[0] : null, [contentItems]);
 
   useEffect(() => {
     try {
@@ -46,6 +49,11 @@ const App: React.FC = () => {
 
       const storedProgress = localStorage.getItem('watchProgress');
       if (storedProgress) setWatchProgress(JSON.parse(storedProgress));
+
+      // Allow overriding default content with local data
+      const storedContent = localStorage.getItem('contentItems');
+      if(storedContent) setContentItems(JSON.parse(storedContent));
+
 
     } catch (error) {
       console.error("Failed to parse from localStorage", error);
@@ -85,10 +93,11 @@ const App: React.FC = () => {
       localStorage.setItem('watchlist', JSON.stringify(watchlist));
       localStorage.setItem('userRatings', JSON.stringify(userRatings));
       localStorage.setItem('watchProgress', JSON.stringify(watchProgress));
+      localStorage.setItem('contentItems', JSON.stringify(contentItems)); // Save content too
     } catch (error) {
       console.error("Failed to save to localStorage", error);
     }
-  }, [watchlist, userRatings, watchProgress]);
+  }, [watchlist, userRatings, watchProgress, contentItems]);
 
 
   const uniqueGenres = useMemo(() => {
@@ -104,13 +113,11 @@ const App: React.FC = () => {
     setSelectedContentItem(null);
   };
 
-  const openAiModal = () => {
-    setIsAiModalOpen(true);
-  };
+  const openAiModal = () => setIsAiModalOpen(true);
+  const closeAiModal = () => setIsAiModalOpen(false);
 
-  const closeAiModal = () => {
-    setIsAiModalOpen(false);
-  };
+  const openSettingsModal = () => setIsSettingsModalOpen(true); // New handler
+  const closeSettingsModal = () => setIsSettingsModalOpen(false); // New handler
   
   const handleAiSelection = (item: ContentItem) => {
     closeAiModal();
@@ -149,6 +156,70 @@ const App: React.FC = () => {
     setActiveLegalModal(type);
   };
 
+  const handleExportData = () => {
+    const dataToExport = {
+      contentItems,
+      watchlist,
+      userRatings,
+      watchProgress,
+    };
+    const dataStr = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'aflambox_data.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') {
+          throw new Error("File could not be read");
+        }
+        const importedData = JSON.parse(text);
+        
+        // Basic validation
+        if (
+          !Array.isArray(importedData.contentItems) ||
+          !Array.isArray(importedData.watchlist) ||
+          typeof importedData.userRatings !== 'object' ||
+          typeof importedData.watchProgress !== 'object'
+        ) {
+          throw new Error('Invalid file format');
+        }
+
+        setContentItems(importedData.contentItems);
+        setWatchlist(importedData.watchlist);
+        setUserRatings(importedData.userRatings);
+        setWatchProgress(importedData.watchProgress);
+        
+        // Reset view
+        setActiveFilter('All');
+        setActiveGenre('All');
+        setSearchQuery('');
+        setCurrentPage(1);
+
+        closeSettingsModal();
+        alert('Data imported successfully!');
+
+      } catch (error) {
+        console.error("Failed to import data:", error);
+        alert(`Error importing file: ${error instanceof Error ? error.message : 'Unknown error'}. Please ensure it is a valid exported JSON file.`);
+      }
+    };
+    reader.onerror = () => {
+        alert('Failed to read the file.');
+    };
+    reader.readAsText(file);
+  };
+
   const filteredContent = useMemo(() => contentItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGenre = activeGenre === 'All' || item.genre.split(', ').includes(activeGenre);
@@ -169,7 +240,7 @@ const App: React.FC = () => {
     const matchesFilterType = !typeToMatch || item.type === typeToMatch;
 
     return matchesFilterType && matchesSearch && matchesGenre;
-  }), [contentItems, searchQuery, activeGenre, activeFilter, watchlist]);
+  }, [contentItems, searchQuery, activeGenre, activeFilter, watchlist]);
 
   const continueWatchingContent = useMemo(() => {
     return contentItems
@@ -197,11 +268,34 @@ const App: React.FC = () => {
     { label: 'TV Series', value: 'TV Series' },
     { label: 'My Watchlist', value: 'Watchlist' },
   ];
+  
+  if (!heroContentItem) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-900 text-white font-sans items-center justify-center">
+        <h1 className="text-2xl font-bold mb-4">No Content Available</h1>
+        <p className="text-gray-400">Import a data file to get started.</p>
+        <button 
+          onClick={openSettingsModal} 
+          className="mt-6 bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-lg transition-transform duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500"
+        >
+          Open Settings
+        </button>
+        {isSettingsModalOpen && (
+          <SettingsModal
+            onClose={closeSettingsModal}
+            onExport={handleExportData}
+            onImport={handleImportData}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white font-sans">
       <Header 
         onOpenAiAssistant={openAiModal} 
+        onOpenSettings={openSettingsModal}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -307,6 +401,14 @@ const App: React.FC = () => {
         />
       )}
       
+      {isSettingsModalOpen && (
+        <SettingsModal 
+          onClose={closeSettingsModal} 
+          onExport={handleExportData}
+          onImport={handleImportData}
+        />
+      )}
+
       {activeLegalModal && (
         <LegalModal type={activeLegalModal} onClose={() => setActiveLegalModal(null)} />
       )}

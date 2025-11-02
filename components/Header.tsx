@@ -1,15 +1,17 @@
 import React from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { SearchIcon } from './icons/SearchIcon';
+import { CogIcon } from './icons/CogIcon';
 import Tooltip from './Tooltip';
 
 interface HeaderProps {
   onOpenAiAssistant: () => void;
+  onOpenSettings: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onOpenAiAssistant, searchQuery, onSearchChange }) => {
+const Header: React.FC<HeaderProps> = ({ onOpenAiAssistant, onOpenSettings, searchQuery, onSearchChange }) => {
   return (
     <header className="bg-gray-900/70 backdrop-blur-sm sticky top-0 z-40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -33,6 +35,15 @@ const Header: React.FC<HeaderProps> = ({ onOpenAiAssistant, searchQuery, onSearc
                 aria-label="Search content"
               />
             </div>
+            <Tooltip text="Settings & Data Management" position="bottom">
+              <button
+                onClick={onOpenSettings}
+                className="flex-shrink-0 flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white font-semibold p-2.5 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                aria-label="Open settings"
+              >
+                <CogIcon className="w-5 h-5" />
+              </button>
+            </Tooltip>
             <Tooltip text="Ask for recommendations" position="bottom">
               <button
                 onClick={onOpenAiAssistant}
